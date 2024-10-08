@@ -1,0 +1,4 @@
+fiftyone>=0.24
+tensorflow>=2.0.0
+umap-learn>=0.5.5
+transformers>=4.32.1
