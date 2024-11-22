@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 SEEDS = [13, 42, 51]
-N_WORKERS = 16
+N_WORKERS = 20
 MAX_CONCURRENT_JOBS = 10
 FEATURES = "clip-vit-base-patch32"
 METHOD = "reconstruction"
@@ -29,6 +29,20 @@ DATASET_NAMES = [
     "StanfordDogs",
     "SUN397",
 ]
+
+MEDMNIST_DATASETS = [
+    "bloodmnist",
+    "chestmnist",
+    "dermamnist",
+    "octmnist",
+    "organamnist",
+    "organcmnist",
+    "organsmnist",
+    "pathmnist",
+    "retinamnist",
+    "tissuemnist",
+]
+    
 
 CIFAR10_HUMAN_LIMIT = 0.172
 CIFAR100_HUMAN_LIMIT = 0.402
