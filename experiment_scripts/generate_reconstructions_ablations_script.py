@@ -1,34 +1,41 @@
 import os
 
+import numpy as np
+
 try:
     from COMMON import *
 except:
     from .COMMON import *
 
 
-script_str = f"python test_methods.py "
+script_str = f"/home/ubuntu/miniconda3/envs/py_311/bin/python test_methods.py "
 
 # Path to the shell script file
 shell_script_path = "experiment_scripts/run_reconstruction_ablations.sh"
 
-LOG_DIR = "logs/reconstructions_ablations"
+LOG_DIR = "logs/reconstructions_ablations_final"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 noise_frac = 0.0
-project_name = "reconstructor_ablations"
-dataset_name = "cifar100"
+project_name = "reconstructor_ablations_final"
 noise_type = "symmetric"
 seed = 13
+N_WORKERS = 20
 
-n_components = [2, 4, 10, 20, 40, 80, 100, 200, 400]
-hidden_dims = [[8], [16], [32], [64], [128], [256], [1024], [2048]]
-n_neighbors = [2, 4, 8, 16, 32, 64, 160]
+# dataset_names = ["cifar10", "cifar100", "DescribableTextures", "StanfordDogs", "RESISC45"]
+# dataset_names = ["FGVC-Aircraft", "deep-weeds", "EuroSAT"]
+dataset_names = ["RESISC45"]
+
+# n_neighbors = [2, 4, 8, 16, 32, 64, 128, 256, 512]
+n_neighbors = [256, 512]
+
+parametric_reconstruction_loss_weights = [0.001, 0.01, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
+# parametric_reconstruction_loss_weights = [0.001, 0.01]
 
 
 commands = []
 
 project_name_str = f" --project_name '{project_name}' "
-dataset_name_str = f" --dataset_name '{dataset_name}' "
 noise_type_str = f" --noise_type '{noise_type}' "
 noise_frac_str = f" --noise_frac {noise_frac} "
 noise_seed_str = f" --noise_seed {seed} "
@@ -41,7 +48,6 @@ fit_frac_str = f" --recon_fit_frac '{fit_frac}' "
 
 base_command_str = (
     script_str
-    + dataset_name_str
     + noise_type_str
     + noise_frac_str
     + noise_seed_str
@@ -53,27 +59,25 @@ base_command_str = (
 )
 
 
-for n_component in n_components:
-    command_str = (
-        base_command_str
-        + f" --recon_n_components {n_component} --wandb_notes 'n_component={n_component}'"
-    )
-    commands.append(command_str)
 
+for dataset_name in dataset_names:
+    dataset_name_str = f" --dataset_name '{dataset_name}' "
+    for n_neighbor in n_neighbors:
+        command_str = (
+            base_command_str
+            + dataset_name_str
+            + f" --recon_n_neighbors {n_neighbor} --wandb_notes 'n_neighbors={n_neighbor}'"
+        )
+        commands.append(command_str)
 
-for hidden_dim in hidden_dims:
-    command_str = (
-        base_command_str
-        + f" --recon_hidden_dims {' '.join(map(str, hidden_dim))} --wandb_notes 'hidden_dims={hidden_dim}'"
-    )
-    commands.append(command_str)
+    # for pw in parametric_reconstruction_loss_weights:
+    #     command_str = (
+    #         base_command_str
+    #         + dataset_name_str
+    #         + f" --recon_parametric_reconstruction_loss_weight {pw} --wandb_notes 'parametric_reconstruction_loss_weight={pw}'"
+    #     )
+    #     commands.append(command_str)
 
-for n_neighbor in n_neighbors:
-    command_str = (
-        base_command_str
-        + f" --recon_n_neighbors {n_neighbor} --wandb_notes 'n_neighbors={n_neighbor}'"
-    )
-    commands.append(command_str)
 
 
 print(f"Total commands: {len(commands)}")
