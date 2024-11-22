@@ -11,7 +11,15 @@ import fiftyone.utils.random as four
 import fiftyone.zoo as foz
 
 FO_DOWNLOAD_DIR = fo.config.default_dataset_dir
-ZOO_DATASETS = ["cifar10", "cifar100", "caltech256", "mnist", "fashion-mnist", "places", "caltech101"]
+ZOO_DATASETS = [
+    "cifar10",
+    "cifar100",
+    "caltech256",
+    "mnist",
+    "fashion-mnist",
+    "places",
+    "caltech101",
+]
 NONZOO_DATASETS = [
     "EuroSAT",
     "StanfordDogs",
@@ -23,16 +31,24 @@ NONZOO_DATASETS = [
     "Food101",
     "MIT-Indoor-Scenes",
     "deep-weeds",
+    "imagenet",
 ]
 HF_DATASETS = [
-    "ucmerced-land-use", # ✅
-    "imagenet-d", # ✅
-    "imagenet-o", # ✅
-    "tiny-imagenet", # ✅
-    "RESISC45", # ✅
+    "RESISC45",
 ]
-ALL_DATASETS = ZOO_DATASETS + NONZOO_DATASETS + HF_DATASETS
-
+MEDMNIST_DATASETS = [
+    "bloodmnist",
+    "chestmnist",
+    "dermamnist",
+    "octmnist",
+    "organamnist",
+    "organcmnist",
+    "organsmnist",
+    "pathmnist",
+    "retinamnist",
+    "tissuemnist",
+]
+ALL_DATASETS = ZOO_DATASETS + NONZOO_DATASETS + HF_DATASETS + MEDMNIST_DATASETS
 
 def download_dataset(dataset_name):
     if dataset_name not in ALL_DATASETS:
@@ -80,14 +96,12 @@ def download_dataset(dataset_name):
         dataset = download_mit_indoor_scenes()
     elif dataset_name == "deep-weeds":
         dataset = download_deep_weeds()
-    elif dataset_name == "imagenet-d":
-        dataset = download_imagenet_d()
-    elif dataset_name == "imagenet-o":
-        dataset = download_imagenet_o()
-    elif dataset_name == "tiny-imagenet":
-        dataset = download_tiny_imagenet()
     elif dataset_name == "RESISC45":
         dataset = download_resisc45()
+    elif dataset_name == "imagenet":
+        dataset = download_imagenet()
+    elif "mnist" in dataset_name:
+        dataset = download_medmnist_dataset(dataset_name)
     create_splits(dataset)
     return dataset
 
@@ -145,15 +159,61 @@ def download_imagenet_d():
     return dataset
 
 
-def download_imagenet_o():
-    from fiftyone.utils.huggingface import load_from_hub
+def download_medmnist_dataset(dataset_name):
+    from PIL import Image
 
-    dataset = load_from_hub(
-        "Voxel51/ImageNet-O",
-        batch_size=100,
-        name="imagenet-o",
-        persistent=True,
+    from huggingface_hub import hf_hub_download
+    filepath = hf_hub_download(repo_id="albertvillanova/medmnist-v2", filename="data/bloodmnist")
+    download_dir = os.path.join(FO_DOWNLOAD_DIR, "medmnist")
+    filepath = os.path.join(download_dir, f"{dataset_name}.npz")
+    download_dir = os.path.join(download_dir, dataset_name)
+
+    os.makedirs(download_dir, exist_ok=True)
+
+    npz = np.load(filepath, allow_pickle=True)
+
+    train_images = npz["train_images"]
+    train_labels = npz["train_labels"]
+    val_images = npz["val_images"]
+    val_labels = npz["val_labels"]
+    test_images = npz["test_images"]
+    test_labels = npz["test_labels"]
+
+    dataset = fo.Dataset(name=dataset_name, persistent=True)
+    samples = []
+
+    def _process_split(images, labels, split):
+        for idx, (image, label) in enumerate(zip(images, labels)):
+            filepath = os.path.join(download_dir, f"{split}_{idx}.png")
+            image = (image * 255).astype(np.uint8)
+
+            Image.fromarray(image).save(filepath)
+            sample = fo.Sample(
+                filepath=filepath, ground_truth=fo.Classification(label=str(label[0]))
+            )
+            samples.append(sample)
+
+    _process_split(train_images, train_labels, "train")
+    _process_split(val_images, val_labels, "val")
+    _process_split(test_images, test_labels, "test")
+
+    dataset.add_samples(samples)
+    return dataset
+
+
+def download_imagenet():
+    download_dir = os.path.join(FO_DOWNLOAD_DIR, "ILSVRC", "Data", "CLS-LOC")
+
+    dataset = fo.Dataset(name="imagenet", persistent=True)
+    dataset.add_dir(
+        os.path.join(download_dir, "train"),
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
     )
+    dataset.add_dir(
+        os.path.join(download_dir, "val"),
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
+    )
+
     return dataset
 
 
