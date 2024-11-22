@@ -163,7 +163,7 @@ def create_feature_embedder(X_train, **kwargs):
         DEFAULT_PARAMETRIC_RECONSTRUCTION_LOSS_WEIGHT,
     )
     hidden_dims = kwargs.get("hidden_dims", DEFAULT_HIDDEN_DIMS)
-    metric = kwargs.get("metrics", DEFAULT_METRIC)
+    metric = kwargs.get("metric", DEFAULT_METRIC)
 
     spread = kwargs.get("spread", None)
     min_dist = kwargs.get("min_dist", None)
@@ -235,6 +235,7 @@ def fit_and_run_embedder_for_class(c, X_c, X_train, kwargs):
     Fit a feature embedder on the given class and return the reconstruction
     errors on the training set.
     """
+    # print(f"Fitting embedder for class {c}")
 
     embedder = create_feature_embedder(X_c, **kwargs)
     X_train_recon = embedder.inverse_transform(embedder.transform(X_train))
@@ -327,18 +328,18 @@ def _partial_fit_and_reconstruct(X_train, y_train, **kwargs):
     X_train_normalized = scaler.transform(X_train).clip(0, 1)
     X_train_fit_normalized = scaler.transform(X_train_fit).clip(0, 1)
 
-    ## get normalized features for each class
-    class2features = {}
-    for c in classes:
-        class2features[c] = X_train_fit_normalized[y_train_fit == c]
-
-    args = [(c, class2features[c], X_train_normalized, kwargs) for c in classes]
-
     if not use_multiprocessing:
         embedders = []
-        for arg in args:
+        for i, c in enumerate(classes):
+            print(f"Fitting class {i+1}/{n_classes}")
+            arg = (c, X_train_fit_normalized[y_train_fit == c], X_train_normalized, kwargs)
             embedders.append(fit_and_run_embedder_for_class(*arg))
     else:
+        ## get normalized features for each class
+        class2features = {}
+        for c in classes:
+            class2features[c] = X_train_fit_normalized[y_train_fit == c]
+        args = [(c, class2features[c], X_train_normalized, kwargs) for c in classes]
         # Use multiprocessing to fit embedders in parallel
         import multiprocessing
 
@@ -351,6 +352,8 @@ def _partial_fit_and_reconstruct(X_train, y_train, **kwargs):
 
     for c, c_err in embedders:
         error_array[c, :] = c_err
+
+    print("Done computing reconstruction errors.")
 
     ## Get GT reconstruction errors
     gt_recon_error = error_array[y_train, np.arange(n_samples)]
