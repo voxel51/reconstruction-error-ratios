@@ -28,8 +28,7 @@ dino_uris = [
 resnet50_uris = ["resnet50-imagenet-torch"]
 
 
-# all_uris = clip_uris + dino_uris + resnet50_uris
-all_uris = ["facebook/dinov2-small"]
+all_uris = clip_uris + dino_uris + resnet50_uris
 
 def _to_field_name(model_uri):
     fn = model_uri.split("/")[-1]
@@ -193,12 +192,10 @@ def main():
 
     dataset_name = args.dataset_name
 
-    # generate_embeddings(dataset_name)
-
-    generate_clip_b32_embeddings(args.dataset_name)
+    generate_embeddings(dataset_name)
 
     if args.store_class_embeddings:
-        generate_clip_b32_class_embeddings(args.dataset_name)
+        generate_clip_b32_class_embeddings(dataset_name)
 
 
 if __name__ == "__main__":
