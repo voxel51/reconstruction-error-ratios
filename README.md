@@ -2,7 +2,7 @@
 
 
 
-[Jacob Marks](https://github.com/jacobmarks)\*$^1$, [Brent A. Griffin](https://github.com/griffbr)$^1$, [Jason J. Corso](https://github.com/jasoncorso)$^{1,2}$ 
+[Jacob Marks](https://github.com/jacobmarks)\* $^1$, [Brent A. Griffin](https://github.com/griffbr)$^1$, [Jason J. Corso](https://github.com/jasoncorso)$^{1,2}$ 
 
 
 $\quad \quad$ $^1$[Voxel51](https://voxel51.com) $\quad$ $^2$[University of Michigan](https://web.eecs.umich.edu/~jjcorso/)
