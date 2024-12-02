@@ -4,7 +4,7 @@ from datetime import datetime
 SEEDS = [13, 42, 51]
 N_WORKERS = 20
 MAX_CONCURRENT_JOBS = 10
-FEATURES = "clip-vit-base-patch32"
+FEATURES = "clip-vit-large-patch14"
 METHOD = "reconstruction"
 COMPETING_METHODS = ["zero_shot", "confident_learning"]
 NOISE_TYPES = ["symmetric", "asymmetric", "confidence"]
@@ -16,7 +16,6 @@ DATASET_NAMES = [
     "caltech256",
     "cifar10",
     "cifar100",
-    "CUB-200-2011",
     "DescribableTextures",
     "fashion-mnist",
     "FGVC-Aircraft",
@@ -24,10 +23,12 @@ DATASET_NAMES = [
     "MIT-Indoor-Scenes",
     "mnist",
     "OxfordFlowers102",
-    "places",
     "RESISC45",
     "StanfordDogs",
     "SUN397",
+    "CUB-200-2011",
+    "places",
+    "imagenet",
 ]
 
 MEDMNIST_DATASETS = [
@@ -42,6 +43,40 @@ MEDMNIST_DATASETS = [
     "retinamnist",
     "tissuemnist",
 ]
+
+dataset_num_classes = {
+    "cifar10": 10,
+    "cifar100": 100,
+    "StanfordDogs": 120,
+    "EuroSAT": 10,
+    "OxfordFlowers102": 102,
+    "DescribableTextures": 47,
+    "MIT-Indoor-Scenes": 67,
+    "CUB-200-2011": 200,
+    "FGVC-Aircraft": 100,
+    "Food101": 101,
+    "mnist": 10,
+    "fashion-mnist": 10,
+    "places": 365,
+    "SUN397": 362,
+    "deep-weeds": 9,
+    "RESISC45": 45,
+    "imagenet": 1000,
+    "bloodmnist": 8,
+    "chestmnist": 2,
+    "dermamnist": 7,
+    "octmnist": 4,
+    "organamnist": 11,
+    "organcmnist": 11,
+    "organsmnist": 11,
+    "pathmnist": 9,
+    "retinamnist": 5,
+    "tissuemnist": 8,
+    "caltech101": 102,
+    "caltech256": 257,
+}
+
+
     
 
 CIFAR10_HUMAN_LIMIT = 0.172

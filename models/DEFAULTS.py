@@ -1,6 +1,6 @@
 ### Top-level defaults
 DEFAULT_DATASET_NAME = "cifar10"
-DEFAULT_FEATURES = "clip-vit-base-patch32"
+DEFAULT_FEATURES = "clip-vit-large-patch14"
 
 ### Reconstruction
 DEFAULT_N_WORKERS = 3

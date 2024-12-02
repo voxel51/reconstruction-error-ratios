@@ -36,6 +36,17 @@ def _to_field_name(model_uri):
         return fn.replace("-torch", "")
     return fn
 
+ALL_FEATURES = [_to_field_name(uri) for uri in all_uris]
+
+
+def get_uri_from_field_name(field_name):
+    if "clip" in field_name:
+        return f"openai/{field_name}"
+    elif "dino" in field_name:
+        return f"facebook/{field_name}"
+    else:
+        return f"{field_name}-torch"
+
 
 def _free_memory(model):
     gc.collect()
@@ -112,11 +123,9 @@ def run_model(model_uri, sample_collection):
 
 
 
-def generate_embeddings(dataset_name):
+def generate_embeddings(dataset_name, model_uri):
     sample_collection = fo.load_dataset(dataset_name).match_tags("train")
-
-    for model_uri in all_uris:
-        run_model(model_uri, sample_collection)
+    run_model(model_uri, sample_collection)
 
 
 def get_class_name_embeddings(dataset_name=None, features=None, **kwargs):
@@ -175,24 +184,31 @@ def generate_clip_b32_class_embeddings(dataset_name):
     get_class_name_embeddings(dataset_name=dataset_name, features=features)
 
 
+def _cuda_check():
+    if not torch.cuda.is_available():
+        raise ValueError("CUDA is not available. Please run on a machine with CUDA support.")
+
 def main():
+    # Computing embeddings requires CUDA visible device
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, required=True)
-    ## Choices include cifar10, cifar100, EuroSAT, StanfordDogs, ...
-    # but you can add your own as well, as long as:
-    # - the dataset is in fiftyone
-    # - it is an image classification dataset with noisy GT labels in an
-    # - fo.Classifications label field with name `ground_truth`
 
-    # Computing embeddings requires CUDA visible device
-
+    ## features to store:
+    parser.add_argument("--features", type=str, default="clip-vit-large-patch14", choices=ALL_FEATURES + ["all"])
     parser.add_argument("--store_class_embeddings", action="store_true")
 
     args = parser.parse_args()
 
-    dataset_name = args.dataset_name
+    _cuda_check()
 
-    generate_embeddings(dataset_name)
+    dataset_name = args.dataset_name
+    features = args.features
+
+    if features == "all":
+        for uri in all_uris:
+            generate_embeddings(dataset_name, get_uri_from_field_name(uri))
+
+    generate_embeddings(dataset_name, get_uri_from_field_name(features))
 
     if args.store_class_embeddings:
         generate_clip_b32_class_embeddings(dataset_name)

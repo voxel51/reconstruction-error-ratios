@@ -17,7 +17,7 @@ NOISE_TYPE = "symmetric"
 NOISE_FRAC = 0.0
 
 
-feature = "dinov2-small" # or "clip-vit-base-patch32" or "resnet50-imagenet" ...
+feature = "clip-vit-large-patch14" # or "dinov2-small", "clip-vit-base-patch32" or "resnet50-imagenet" ...
 project_name = "reconstructor_dataset_complexity"
 
 

@@ -48,12 +48,15 @@ def download_human_labels(dataset_name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="cifar10", choices=["cifar10", "cifar100"])
+    parser.add_argument("--dataset_name", type=str, default="cifar10", choices=["cifar10", "cifar100", "all"])
     args = parser.parse_args()
 
     if args.dataset == "cifar10":
         download_cifar10_human_noise()
+    elif args.dataset == "cifar100":
+        download_cifar100_human_noise()
     else:
+        download_cifar10_human_noise()
         download_cifar100_human_noise()
 
 

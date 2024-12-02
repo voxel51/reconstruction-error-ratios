@@ -13,6 +13,7 @@ import numpy as np
 
 from evaluation import evaluate_model
 from models.DEFAULTS import *
+from experiment_scripts.COMMON import dataset_num_classes
 
 import wandb
 
@@ -27,6 +28,28 @@ def load_data(**kwargs):
     noise_type = kwargs.get("noise_type", None)
 
     features = kwargs.get("features", DEFAULT_FEATURES)
+
+    use_clusters = kwargs.get("use_clusters", False)
+    if use_clusters:
+        num_clusters = kwargs.get("num_clusters", None)
+        if num_clusters is None or num_clusters == 0:
+            num_clusters = dataset_num_classes[dataset_name]
+        cluster_method = kwargs.get("cluster_method", "kmeans")
+        cluster_filename = f"data/{dataset_name}_clusters_{features}_{num_clusters}_{cluster_method}.npy"
+        if not os.path.exists(cluster_filename):
+            raise ValueError(f"Clusters not found for {dataset_name} {kwargs['features']} {num_clusters} {cluster_method}")
+        
+        y = np.load(cluster_filename)
+
+        if features != DEFAULT_FEATURES:
+            X_filepath = f"data/{dataset_name}_X_{features}.npy"
+        else:
+            X_filepath = f"data/{dataset_name}_X.npy"
+
+        X = np.load(X_filepath)
+        return X, y, y
+
+    
     if features != DEFAULT_FEATURES:
         X_filepath = f"data/{dataset_name}_X_{features}.npy"
         y_gt_filepath = f"data/{dataset_name}_y_{features}_gt.npy"
@@ -267,7 +290,7 @@ def main():
         choices=["reconstruction", "confident_learning", "simifeat", "zero_shot"],
     )
     parser.add_argument("--dataset_name", type=str, default="cifar10")
-    parser.add_argument("--features", type=str, default="clip-vit-base-patch32")
+    parser.add_argument("--features", type=str, default="clip-vit-large-patch14")
 
     parser.add_argument("--noise_frac", type=float, default=None)
     parser.add_argument(
@@ -278,6 +301,10 @@ def main():
     )
     parser.add_argument("--noise_conf_model_size", type=str, default="s")
     parser.add_argument("--noise_seed", type=int)
+    ### Use clusters for unsupervised difficulty estimation
+    parser.add_argument("--use_clusters", action="store_true")
+    parser.add_argument("--cluster_method", type=str, default="kmeans")
+    parser.add_argument("--num_clusters", type=int, default=0)
 
     ### Reconstruction
     group = parser.add_mutually_exclusive_group(required=False)

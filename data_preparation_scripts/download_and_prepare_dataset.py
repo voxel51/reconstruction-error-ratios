@@ -31,7 +31,6 @@ NONZOO_DATASETS = [
     "Food101",
     "MIT-Indoor-Scenes",
     "deep-weeds",
-    "imagenet",
 ]
 HF_DATASETS = [
     "RESISC45",
@@ -50,17 +49,26 @@ MEDMNIST_DATASETS = [
 ]
 ALL_DATASETS = ZOO_DATASETS + NONZOO_DATASETS + HF_DATASETS + MEDMNIST_DATASETS
 
+
+## check if huggingface_hub is installed
+def _has_huggingface_hub():
+    try:
+        import huggingface_hub
+
+        return True
+    except ImportError:
+        return False
+
+
 def download_dataset(dataset_name):
     if dataset_name not in ALL_DATASETS:
         raise ValueError(f"Unknown dataset {dataset_name}")
 
     if dataset_name in ZOO_DATASETS:
         if dataset_name == "places":
-            ## only get the val split because dataset is huge
-            dataset = foz.load_zoo_dataset(dataset_name, split="validation")
-            dataset.name = "places"
             for sample in dataset.iter_samples(autosave=True, progress=True):
                 label = sample.ground_truth.label
+                ## reformat for Ultralytics training and CLIP embedding
                 sample["ground_truth"].label = label[3:].replace("/", "-")
         else:
             dataset = foz.load_zoo_dataset(dataset_name)
@@ -70,6 +78,7 @@ def download_dataset(dataset_name):
             # replace T-shirt/top with T-shirt
             for sample in dataset.iter_samples(autosave=True, progress=True):
                 if sample.ground_truth.label == "T-shirt/top":
+                    ## reformat for Ultralytics training and CLIP embedding
                     sample.ground_truth.label = "T-shirt"
         if "cifar" in dataset_name or "mnist" in dataset_name:
             return dataset
@@ -90,16 +99,12 @@ def download_dataset(dataset_name):
         dataset = download_DescribableTextures()
     elif dataset_name == "Food101":
         dataset = download_Food101()
-    elif dataset_name == "ucmerced-land-use":
-        dataset = download_ucmerced()
     elif dataset_name == "MIT-Indoor-Scenes":
         dataset = download_mit_indoor_scenes()
     elif dataset_name == "deep-weeds":
         dataset = download_deep_weeds()
     elif dataset_name == "RESISC45":
         dataset = download_resisc45()
-    elif dataset_name == "imagenet":
-        dataset = download_imagenet()
     elif "mnist" in dataset_name:
         dataset = download_medmnist_dataset(dataset_name)
     create_splits(dataset)
@@ -107,6 +112,7 @@ def download_dataset(dataset_name):
 
 
 def create_splits(dataset):
+    ## random split 90/10
     tags = dataset.distinct("tags")
     dataset.untag_samples(tags)
     train, test = four.random_split(dataset, [0.9, 0.1])
@@ -115,6 +121,8 @@ def create_splits(dataset):
 
 
 def download_hf_basic(repo_id, dataset_name):
+    if not _has_huggingface_hub():
+        raise ValueError("huggingface_hub is not installed. Please install it.")
     from fiftyone.utils.huggingface import load_from_hub
 
     dataset = load_from_hub(
@@ -131,39 +139,20 @@ def download_hf_basic(repo_id, dataset_name):
     return dataset
 
 
-def download_tiny_imagenet():
-    return download_hf_basic("theodor1289/imagenet-1k_tiny", "tiny-imagenet")
-
-
-def download_imagenet_sketch():
-    return download_hf_basic("songweig/imagenet_sketch", "imagenet-sketch")
-
-
-def download_ucmerced():
-    return download_hf_basic("blanchon/UC_Merced", "ucmerced-land-use")
-
-
 def download_resisc45():
     return download_hf_basic("jonathan-roberts1/NWPU-RESISC45", "RESISC45")
 
 
-def download_imagenet_d():
-    from fiftyone.utils.huggingface import load_from_hub
-
-    dataset = load_from_hub(
-        "Voxel51/ImageNet-D",
-        batch_size=100,
-        name="imagenet-d",
-        persistent=True,
-    )
-    return dataset
-
-
 def download_medmnist_dataset(dataset_name):
+    if not _has_huggingface_hub():
+        raise ValueError("huggingface_hub is not installed. Please install it.")
     from PIL import Image
 
     from huggingface_hub import hf_hub_download
-    filepath = hf_hub_download(repo_id="albertvillanova/medmnist-v2", filename="data/bloodmnist")
+
+    filepath = hf_hub_download(
+        repo_id="albertvillanova/medmnist-v2", filename="data/bloodmnist"
+    )
     download_dir = os.path.join(FO_DOWNLOAD_DIR, "medmnist")
     filepath = os.path.join(download_dir, f"{dataset_name}.npz")
     download_dir = os.path.join(download_dir, dataset_name)
@@ -198,22 +187,6 @@ def download_medmnist_dataset(dataset_name):
     _process_split(test_images, test_labels, "test")
 
     dataset.add_samples(samples)
-    return dataset
-
-
-def download_imagenet():
-    download_dir = os.path.join(FO_DOWNLOAD_DIR, "ILSVRC", "Data", "CLS-LOC")
-
-    dataset = fo.Dataset(name="imagenet", persistent=True)
-    dataset.add_dir(
-        os.path.join(download_dir, "train"),
-        dataset_type=fo.types.ImageClassificationDirectoryTree,
-    )
-    dataset.add_dir(
-        os.path.join(download_dir, "val"),
-        dataset_type=fo.types.ImageClassificationDirectoryTree,
-    )
-
     return dataset
 
 
@@ -544,7 +517,7 @@ def download_deep_weeds():
 
     dataset = fo.Dataset(name="deep-weeds", persistent=True)
     samples = []
-    for idx, row in labels.iterrows():
+    for _, row in labels.iterrows():
         filename = row.Filename
         species = row.Species
         filepath = os.path.join(download_dir, filename)
@@ -600,10 +573,13 @@ def store_y_for_features(dataset_name, features):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default=None)
+    ## allow any of ALL_DATASETS
+    parser.add_argument(
+        "--dataset_name", type=str, default="all", choices=ALL_DATASETS + ["all"]
+    )
     args = parser.parse_args()
 
-    if args.dataset_name is not None:
+    if args.dataset_name is not "all":
         download_and_prepare(args.dataset_name)
     else:
         for dataset_name in ALL_DATASETS:
