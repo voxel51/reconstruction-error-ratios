@@ -248,7 +248,7 @@ def run_script(**kwargs):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, default="cifar10")
-    parser.add_argument("--embeddings_field", type=str, default="clip-vit-base-patch32")
+    parser.add_argument("--embeddings_field", type=str, default="clip-vit-large-patch14")
     parser.add_argument("--mistakenness_field", type=str, default="mistakenness")
 
 
