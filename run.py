@@ -170,7 +170,7 @@ def main():
     X, y = load_data(**kwargs)
     est_time = estimate_time_to_completion(y, **kwargs)
     if est_time is not None:
-        print(f"Estimated computation time: {np.round(est_time, -1)} seconds")
+        print(f"Estimated computation time: {int(np.round(est_time, -1))} seconds")
 
     # Open the log file and redirect intermediate output
     with open("run_model.log", "a") as log_file:
