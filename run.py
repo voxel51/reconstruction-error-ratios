@@ -127,10 +127,9 @@ def estimate_time_to_completion(y, **kwargs):
     return est_time ## seconds
 
 
-def _gen_run_name(dataset, kwargs):
+def _gen_run_name(dataset, embeddings_field):
     run_prefix = "rers"
-    embed_field = kwargs.get("embeddings_field", "clip-vit-base-patch32")
-    run_name = f"{run_prefix}_{embed_field}".replace("-", "_")
+    run_name = f"{run_prefix}_{embeddings_field}".replace("-", "_")
 
     if run_name not in dataset.list_runs():
         return run_name
@@ -138,37 +137,22 @@ def _gen_run_name(dataset, kwargs):
     unique_flag = False
     ind = 1
     while not unique_flag:
-        run_name = f"{run_prefix}_{embed_field}_{ind}"
+        run_name = f"{run_prefix}_{embeddings_field}_{ind}"
         if run_name not in dataset.list_runs():
             unique_flag = True
         ind += 1
     return run_name.replace("-", "_")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="cifar10")
-    parser.add_argument("--embeddings_field", type=str, default="clip-vit-base-patch32")
-    parser.add_argument("--mistakenness_field", type=str, default="mistakenness")
-
-
-    ### Reconstruction
-    group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument("--fit_frac", type=float, default=None)
-    group.add_argument("--fit_samples_per_class", type=int, default=None)
-
-    parser.add_argument("--n_workers", type=int, default=os.cpu_count() - 1)
-    parser.add_argument("--reg_strength", type=float, default=DEFAULT_REG_STRENGTH)
-    parser.add_argument("--n_components", type=int, default=DEFAULT_N_COMPONENTS)
-    parser.add_argument("--n_neighbors", type=int, default=DEFAULT_N_NEIGHBORS)
-    parser.add_argument("--skip_multiprocessing", action="store_true")
-    parser.add_argument("--estimate_probs", action="store_true")
-
-    args = parser.parse_args()
-    kwargs = _format_kwargs(vars(args))
+def run_script(**kwargs):
+    dataset_name = kwargs.get("dataset_name", None)
+    embeddings_field = kwargs.get("embeddings_field", "clip-vit-base-patch32")
+    mistakenness_field = kwargs.get("mistakenness_field", "mistakenness")
+    estimate_probs = kwargs.get("recon_estimate_probs", False)
 
     X, y = load_data(**kwargs)
     est_time = estimate_time_to_completion(y, **kwargs)
+
     if est_time is not None:
         print(f"Estimated computation time: {int(np.round(est_time, -1))} seconds")
 
@@ -183,7 +167,6 @@ def main():
     print(f"Estimated noise: {eta:.2f}")
 
     chi_avg = res.get("chi_avg", None)
-    embeddings_field = args.embeddings_field
     clf_diff = estimate_classification_difficulty(chi_avg, embeddings_field)
     print(f"Estimated classification difficulty: {clf_diff:.2f}")
 
@@ -197,12 +180,11 @@ def main():
 
     ## store results in the dataset
     print("Storing results in dataset")
-    dataset_name = args.dataset_name
     dataset = fo.load_dataset(dataset_name)
 
     ## create a custom run in FiftyOne
     config = fo.RunConfig(**kwargs)
-    run_name = _gen_run_name(dataset, kwargs)
+    run_name = _gen_run_name(dataset, embeddings_field)
     dataset.register_run(run_name, config)
 
     class_names = dataset.distinct("ground_truth.label")
@@ -227,11 +209,9 @@ def main():
     print(f"You can access via `results = dataset.load_run_results({run_name})`")
 
 
-    mistakenness_field = args.mistakenness_field
     if not dataset.has_sample_field(mistakenness_field):
         dataset.add_sample_field(mistakenness_field, fo.FloatField)
-    dataset.set_field(mistakenness_field, res["mistakenness"])
-    dataset.save()
+    dataset.set_field(mistakenness_field, res["mistakenness"]).save()
     print("Mistakenness values stored in field:", mistakenness_field)
 
     if not dataset.has_sample_field("mistaken"):
@@ -239,14 +219,38 @@ def main():
     dataset.set_field("mistaken", is_mistaken)
     dataset.save()
 
-    if args.recon_estimate_probs:
+    if estimate_probs:
         mistakenness_probs = res.get("mistakenness_probs", None)
         mistakenness_probs_field = "mistakenness_probs"
         if not dataset.has_sample_field(mistakenness_probs_field):
             dataset.add_sample_field(mistakenness_probs_field, fo.FloatField)
-        dataset.set_field(mistakenness_probs_field, mistakenness_probs)
-        dataset.save()
+        dataset.set_field(mistakenness_probs_field, mistakenness_probs).save()
         print("Mistakenness probabilities stored in field: ", mistakenness_probs_field)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, default="cifar10")
+    parser.add_argument("--embeddings_field", type=str, default="clip-vit-base-patch32")
+    parser.add_argument("--mistakenness_field", type=str, default="mistakenness")
+
+
+    ### Reconstruction
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument("--fit_frac", type=float, default=None)
+    group.add_argument("--fit_samples_per_class", type=int, default=None)
+
+    parser.add_argument("--n_workers", type=int, default=os.cpu_count() - 1)
+    parser.add_argument("--reg_strength", type=float, default=DEFAULT_REG_STRENGTH)
+    parser.add_argument("--n_components", type=int, default=DEFAULT_N_COMPONENTS)
+    parser.add_argument("--n_neighbors", type=int, default=DEFAULT_N_NEIGHBORS)
+    parser.add_argument("--skip_multiprocessing", action="store_true")
+    parser.add_argument("--estimate_probs", action="store_true")
+
+    args = parser.parse_args()
+    kwargs = _format_kwargs(vars(args))
+
+    run_script(**kwargs)
 
 
 
