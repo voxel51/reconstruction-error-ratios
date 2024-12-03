@@ -130,13 +130,19 @@ def estimate_time_to_completion(y, **kwargs):
 def _gen_run_name(dataset, kwargs):
     run_prefix = "rers"
     embed_field = kwargs.get("embeddings_field", "clip-vit-base-patch32")
-    run_name = f"{run_prefix}_{embed_field}"
-    if run_name in dataset.list_runs():
-        for i in range(2, 100):
-            run_name = f"{run_prefix}_{embed_field}_{i}"
-            if run_name not in dataset.list_runs():
-                break
-    return run_name
+    run_name = f"{run_prefix}_{embed_field}".replace("-", "_")
+
+    if run_name not in dataset.list_runs():
+        return run_name
+    
+    unique_flag = False
+    ind = 1
+    while not unique_flag:
+        run_name = f"{run_prefix}_{embed_field}_{ind}"
+        if run_name not in dataset.list_runs():
+            unique_flag = True
+        ind += 1
+    return run_name.replace("-", "_")
 
 
 def main():
