@@ -1,8 +1,8 @@
 import argparse
+from contextlib import redirect_stdout
+import logging
 from math import ceil
 import os
-import logging
-from contextlib import redirect_stdout
 import warnings
 
 # Set up logging
