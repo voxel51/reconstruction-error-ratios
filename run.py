@@ -1,8 +1,11 @@
 import argparse
 from contextlib import redirect_stdout
+import functools
 import logging
 from math import ceil
 import os
+import sys
+from time import time
 import warnings
 
 # Set up logging
@@ -32,6 +35,19 @@ from fiftyone import ViewField as F
 
 from models.DEFAULTS import *
 from models.reconstruction import UMAPAutoEncoderModel
+
+
+def timeit(method):
+    @functools.wraps(method)
+    def timed(*args, **kw):
+        ts = time()
+        result = method(*args, **kw)
+        te = time()
+        ## redirect output from run_model to console
+        
+        print(f"{method.__name__} took: {te-ts:.2f} seconds", file=sys.stderr)
+        return result
+    return timed
 
 def _format_kwargs(kwargs):
     recon_keys = [
@@ -91,7 +107,7 @@ def load_data(**kwargs):
 
         return X, y
 
-
+@timeit
 def run_model(X, y, **kwargs):
     model = UMAPAutoEncoderModel(X, y, **kwargs)
     results_dict = model.detect_label_errors()
@@ -182,10 +198,11 @@ def run_script(**kwargs):
     print("Storing results in dataset")
     dataset = fo.load_dataset(dataset_name)
 
-    ## create a custom run in FiftyOne
-    config = fo.RunConfig(**kwargs)
-    run_name = _gen_run_name(dataset, embeddings_field)
-    dataset.register_run(run_name, config)
+    if not dataset.has_sample_field(mistakenness_field):
+        dataset.add_sample_field(mistakenness_field, fo.FloatField)
+    dataset.set_values(mistakenness_field, res["mistakenness"])
+    dataset.save()
+    print("Mistakenness values stored in field:", mistakenness_field)
 
     class_names = dataset.distinct("ground_truth.label")
     class_scores = {}
@@ -193,6 +210,25 @@ def run_script(**kwargs):
         sample_collection = dataset.match_tags("train").match(F("ground_truth.label") == label)
         class_scores[label] = sample_collection.mean(mistakenness_field)
 
+    if not dataset.has_sample_field("mistaken"):
+        dataset.add_sample_field("mistaken", fo.BooleanField)
+    dataset.set_values("mistaken", is_mistaken)
+    dataset.save()
+
+    if estimate_probs:
+        mistakenness_probs = res.get("mistakenness_probs", None)
+        mistakenness_probs_field = "mistakenness_probs"
+        if not dataset.has_sample_field(mistakenness_probs_field):
+            dataset.add_sample_field(mistakenness_probs_field, fo.FloatField)
+        dataset.set_values(mistakenness_probs_field, mistakenness_probs)
+        dataset.save()
+        print("Mistakenness probabilities stored in field: ", mistakenness_probs_field)
+
+    ## create a custom run in FiftyOne
+    config = fo.RunConfig(**kwargs)
+    run_name = _gen_run_name(dataset, embeddings_field)
+    dataset.register_run(run_name, config)
+    
     results = fo.RunResults(
         dataset, 
         config, 
@@ -206,26 +242,7 @@ def run_script(**kwargs):
     dataset.save_run_results(run_name, results)
     
     print("Results stored in run:", run_name)
-    print(f"You can access via `results = dataset.load_run_results({run_name})`")
-
-
-    if not dataset.has_sample_field(mistakenness_field):
-        dataset.add_sample_field(mistakenness_field, fo.FloatField)
-    dataset.set_field(mistakenness_field, res["mistakenness"]).save()
-    print("Mistakenness values stored in field:", mistakenness_field)
-
-    if not dataset.has_sample_field("mistaken"):
-        dataset.add_sample_field("mistaken", fo.BooleanField)
-    dataset.set_field("mistaken", is_mistaken)
-    dataset.save()
-
-    if estimate_probs:
-        mistakenness_probs = res.get("mistakenness_probs", None)
-        mistakenness_probs_field = "mistakenness_probs"
-        if not dataset.has_sample_field(mistakenness_probs_field):
-            dataset.add_sample_field(mistakenness_probs_field, fo.FloatField)
-        dataset.set_field(mistakenness_probs_field, mistakenness_probs).save()
-        print("Mistakenness probabilities stored in field: ", mistakenness_probs_field)
+    print(f"You can access via `results = dataset.load_run_results('{run_name}')`")
 
 
 def main():
