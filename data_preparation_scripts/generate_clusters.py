@@ -83,6 +83,9 @@ def _load_gt_labels(dataset_name):
     y = np.load(f"data/{dataset_name}_y_gt.npy")
     return y
 
+def _get_num_classes(dataset_name):
+    return len(np.unique(_load_gt_labels(dataset_name)))
+
 
 def _cluster_features(X, num_clusters, cluster_method):
     if cluster_method == "kmeans":
@@ -95,8 +98,7 @@ def _cluster_features(X, num_clusters, cluster_method):
 
 def _store_clusters(dataset_name, features, num_clusters, cluster_method):
     if num_clusters is None:
-        y = _load_gt_labels(dataset_name)
-        num_clusters = len(np.unique(y))
+        num_clusters = _get_num_classes(dataset_name)
     
     X = _load_features(dataset_name, features)
     labels = _cluster_features(X, num_clusters, cluster_method)
